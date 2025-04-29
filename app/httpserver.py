@@ -102,7 +102,7 @@ class HttpServer:
         log(f"Starting server on {self.address[0]}:{self.address[1]}...")
         self.server_socket.listen(self.max_connections)
 
-        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
+        with ThreadPoolExecutor(max_workers=self.num_threads, thread_name_prefix="HttpThread") as executor:
             while True:
                 client_socket, addr = self.server_socket.accept()
                 executor.submit(self._handle_connection, client_socket, addr)
