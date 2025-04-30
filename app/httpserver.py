@@ -13,12 +13,15 @@ def log(text: str) -> None:
         if line:
             print(f"[{thread_name}]{timestamp}: {line}")
 
+
 def logv(text: str) -> None:
     # TODO: Implement verbose logging
     log(f"\033[90m{text}\033[0m")
 
+
 def logerr(text: str) -> None:
     log(f"\033[91m{text}\033[0m")
+
 
 class HttpRequest:
     def __init__(self, method: str, path: str, headers: dict, body: bytes):
@@ -29,6 +32,7 @@ class HttpRequest:
 
     def __repr__(self):
         return f"<HttpRequest method={self.method} path={self.path} headers={self.headers} body={self.body}>"
+
 
 class HttpResponse:
     STATUS_404_NOT_FOUND = 404
@@ -49,9 +53,10 @@ class HttpResponse:
         response_line = f"HTTP/1.1 {self.status_code} {status_message}\r\n"
         headers = "".join(f"{k}: {v}\r\n" for k, v in self.headers.items())
         return (response_line + headers + "\r\n").encode("utf-8") + self.body
-    
+
     def __repr__(self):
         return f"<HttpResponse status_code={self.status_code} headers={self.headers} body={self.body}>"
+
 
 class HttpResponseBuilder:
     def __init__(self, status_code: int):
@@ -74,6 +79,7 @@ class HttpResponseBuilder:
             body=self._body,
         )
 
+
 class HttpRouter:
     def __init__(self):
         self._routes = {}
@@ -90,8 +96,15 @@ class HttpRouter:
 
         return self._routes[path]
 
+
 class HttpServer:
-    def __init__(self, address: Tuple[str, int], router: HttpRouter, max_connections: int = 5, num_threads: int = 3):
+    def __init__(
+        self,
+        address: Tuple[str, int],
+        router: HttpRouter,
+        max_connections: int = 5,
+        num_threads: int = 3,
+    ):
         self.address = address
         self.server_socket = socket.create_server(address, reuse_port=True)
         self.max_connections = max_connections
@@ -102,7 +115,9 @@ class HttpServer:
         log(f"Starting server on {self.address[0]}:{self.address[1]}...")
         self.server_socket.listen(self.max_connections)
 
-        with ThreadPoolExecutor(max_workers=self.num_threads, thread_name_prefix="HttpThread") as executor:
+        with ThreadPoolExecutor(
+            max_workers=self.num_threads, thread_name_prefix="HttpThread"
+        ) as executor:
             while True:
                 client_socket, addr = self.server_socket.accept()
                 executor.submit(self._handle_connection, client_socket, addr)
