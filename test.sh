@@ -28,9 +28,10 @@ SERVER_PID=$!
 echo "Started sample HTTP server with PID $SERVER_PID"
 sleep 2  # Give the server time to start
 
-##### Test - Validate 200 OK on root #####
-((TEST_NUMBER++))
+######################################################## Tests
 
+######################################################## Test - Validate 200 OK on root #####
+((TEST_NUMBER++))
 
 RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8080)
 BODY=$(echo "$RESPONSE" | head -n -1)
@@ -42,7 +43,7 @@ else
     fail "Expected 200, but got $STATUS_CODE"
 fi
 
-##### Test - Validate Content-Length header #####
+######################################################## Test - Validate Content-Length header #####
 ((TEST_NUMBER++))
 
 RESPONSE=$(curl -s -i -w "\n%{http_code}" http://localhost:8080)
@@ -58,7 +59,7 @@ else
     fail "Content-Length header ($CONTENT_LENGTH) does not match the body length (${#BODY})"
 fi
 
-##### Test - Validate 404 on an inexistent path #####
+######################################################## Test - Validate 404 on an inexistent path #####
 ((TEST_NUMBER++))
 
 RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8080/ghiofgyuofg)
@@ -70,6 +71,22 @@ if [ "$STATUS_CODE" -eq 404 ]; then
 else
     fail "Expected 404, but got $STATUS_CODE"
 fi
+
+######################################################## Test - Validate /test and /test/ are the same #####
+((TEST_NUMBER++))
+
+RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8080/test)
+RESPONSE2=$(curl -s -w "\n%{http_code}" http://localhost:8080/test/)
+STATUS_CODE=$(echo "$RESPONSE" | tail -n 1)
+STATUS_CODE2=$(echo "$RESPONSE2" | tail -n 1)
+
+if [ "$STATUS_CODE" -eq 200 ] && [ "$STATUS_CODE2" -eq 200 ]; then
+    pass "Got 200 OK on /test and /test/"
+else
+    fail "Got $STATUS_CODE on /test and $STATUS_CODE2 on /test/ expected was 200 on both"
+fi
+
+######################################################## End of tests
 
 # Print summary of test results
 echo -e "\nTest Summary:"

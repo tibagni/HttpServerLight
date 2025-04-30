@@ -81,20 +81,33 @@ class HttpResponseBuilder:
 
 
 class HttpRouter:
+    class Route:
+        def __init__(self, path: str, handler: Callable[[HttpRequest], HttpResponse]):
+            self.path = path
+            self.handler = handler
+        
+        def matches_with(self, path: str) -> bool:
+            # Do not consider the trailing '/' as a difference
+            if path.rstrip('/') == self.path.rstrip('/'):
+                return True
+
+            return False
+
     def __init__(self):
-        self._routes = {}
+        self._routes: list[HttpRouter.Route] = []
 
     def add_route(self, path: str, handler: Callable[[HttpRequest], HttpResponse]):
-        if path in self._routes:
-            raise ValueError(f"Route {path} already exists")
+        # if path in self._routes:
+        #     raise ValueError(f"Route {path} already exists")
 
-        self._routes[path] = handler
+        self._routes.append(HttpRouter.Route(path, handler))
 
     def get_handler(self, path: str) -> Callable[[HttpRequest], HttpResponse]:
-        if path not in self._routes:
-            return lambda req: HttpResponseBuilder(404).build()
+        for route in self._routes:
+            if route.matches_with(path):
+                return route.handler
 
-        return self._routes[path]
+        return lambda req: HttpResponseBuilder(404).build()
 
 
 class HttpServer:
