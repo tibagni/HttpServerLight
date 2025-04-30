@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.env/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# VS Code settings
+.vscode/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Python-specific
+*.pyo
+*.pyd
+
+# Test output
+test-results/
+*.out
+
+# Ignore server PID files
+*.pid
