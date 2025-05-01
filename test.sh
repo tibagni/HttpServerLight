@@ -86,7 +86,24 @@ else
     fail "Got $STATUS_CODE on /test and $STATUS_CODE2 on /test/ expected was 200 on both"
 fi
 
+######################################################## Test - Validate /test and /test/ are the same #####
+((TEST_NUMBER++))
+
+RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8080/echo/echo_test)
+BODY=$(echo "$RESPONSE" | head -n -1)
+STATUS_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+if [ "$STATUS_CODE" -eq 200 ] && [ "$BODY" == "echo_test!" ]; then
+    pass "Got 200 OK and correct body on /echo/echo_test"
+else
+    fail "Got $STATUS_CODE and body '$BODY' on /echo/echo_test, expected 200 and 'echo_test!'"
+fi
+
 ######################################################## End of tests
+
+# Stop the HTTP server
+kill $SERVER_PID
+echo -e "\nStopped HTTP server"
 
 # Print summary of test results
 echo -e "\nTest Summary:"
@@ -96,7 +113,3 @@ if [ "${#FAILED_TEST_LIST[@]}" -gt 0 ]; then
 else
     echo -e "\t${PASS}All $TEST_NUMBER tests passed!${RESET}"
 fi
-
-# Stop the HTTP server
-kill $SERVER_PID
-echo -e "\nStopped HTTP server"

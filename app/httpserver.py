@@ -1,4 +1,5 @@
 import socket
+import re
 
 from threading import current_thread
 from typing import Callable, Tuple, Optional
@@ -83,6 +84,7 @@ class HttpResponseBuilder:
 class HttpRouter:
     class Route:
         def __init__(self, path: str, handler: Callable[[HttpRequest], HttpResponse]):
+            self._validate_path(path)
             self.path = path
             self.handler = handler
         
@@ -90,14 +92,68 @@ class HttpRouter:
             # Do not consider the trailing '/' as a difference
             if path.rstrip('/') == self.path.rstrip('/'):
                 return True
+            
+            if self._matches_with_dynamic_path(path):
+                return True
 
             return False
+        
+        #TODO fix case when the URL has spaces
+        def get_dynamic_segments(self, path: str) -> Optional[dict]:
+            dynamic_segments_dict = None
+            pattern = re.sub(r"\{(\w*)\}", r"(\\w+)", self.path)
+            url_match = re.match(pattern, path)
+            if url_match:
+                segment_names_pattern = re.sub(r"\{(\w*)\}", r"({\\w*})", self.path)
+                segment_names_match = re.match(segment_names_pattern, self.path)
+                if segment_names_match:
+                    segment_names = segment_names_match.groups()
+                    segment_values = url_match.groups()
+
+                    # Fix the segment names. Use 'seg0, seg1, ...' if no name is provided
+                    segment_names = (pn[1:-1] if pn[1:-1] else f"seg{i}" for i, pn in enumerate(segment_names))
+
+                    params = zip(segment_names, segment_values)
+                    dynamic_segments_dict = {name: value for name, value in params}
+
+            return dynamic_segments_dict
+        
+        def _matches_with_dynamic_path(self, path: str) -> bool:
+            # Check if the path matches the route
+            path_parts = path.split("/")
+            route_parts = self.path.split("/")
+
+            if len(path_parts) != len(route_parts):
+                return False
+
+            for path_part, route_part in zip(path_parts, route_parts):
+                if route_part.startswith("{") and route_part.endswith("}"):
+                    continue
+                if path_part != route_part:
+                    return False
+
+            return True
+        
+        def _validate_path(self, path: str) -> None:
+            # Make sure all '{' and '}' are balanced
+            stack = []
+            for char in path:
+                if char == "{":
+                    stack.append("{")
+                elif char == "}":
+                    if not stack or stack[-1] != "{":
+                        raise ValueError(f"Invalid Path: {path}")
+
+                    stack.pop()
+
+            if stack:
+                raise ValueError(f"Invalid Path: {path}")
 
     def __init__(self):
         self._routes: list[HttpRouter.Route] = []
 
     def add_route(self, path: str, handler: Callable[[HttpRequest], HttpResponse]):
-        # if path in self._routes:
+        # if path in self._routes: TODO Check if the path already exists
         #     raise ValueError(f"Route {path} already exists")
 
         self._routes.append(HttpRouter.Route(path, handler))
@@ -105,6 +161,14 @@ class HttpRouter:
     def get_handler(self, path: str) -> Callable[[HttpRequest], HttpResponse]:
         for route in self._routes:
             if route.matches_with(path):
+                dynamic_segments = route.get_dynamic_segments(path)
+                if dynamic_segments:
+                    # Add the dynamic segments to the request
+                    def handler_with_dynamic_segments(request: HttpRequest, **kwargs) -> HttpResponse:
+                        return route.handler(request, **dynamic_segments)
+
+                    return handler_with_dynamic_segments
+
                 return route.handler
 
         return lambda req: HttpResponseBuilder(404).build()
