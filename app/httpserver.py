@@ -1,5 +1,6 @@
 import socket
 import re
+import traceback
 
 from threading import current_thread
 from typing import Callable, Tuple, Optional
@@ -87,18 +88,18 @@ class HttpRouter:
             self._validate_path(path)
             self.path = path
             self.handler = handler
-        
+
         def matches_with(self, path: str) -> bool:
             # Do not consider the trailing '/' as a difference
-            if path.rstrip('/') == self.path.rstrip('/'):
+            if path.rstrip("/") == self.path.rstrip("/"):
                 return True
-            
+
             if self._matches_with_dynamic_path(path):
                 return True
 
             return False
-        
-        #TODO fix case when the URL has spaces
+
+        # TODO fix case when the URL has spaces
         def get_dynamic_segments(self, path: str) -> Optional[dict]:
             dynamic_segments_dict = None
             pattern = re.sub(r"\{(\w*)\}", r"(\\w+)", self.path)
@@ -111,13 +112,16 @@ class HttpRouter:
                     segment_values = url_match.groups()
 
                     # Fix the segment names. Use 'seg0, seg1, ...' if no name is provided
-                    segment_names = (pn[1:-1] if pn[1:-1] else f"seg{i}" for i, pn in enumerate(segment_names))
+                    segment_names = (
+                        pn[1:-1] if pn[1:-1] else f"seg{i}"
+                        for i, pn in enumerate(segment_names)
+                    )
 
                     params = zip(segment_names, segment_values)
                     dynamic_segments_dict = {name: value for name, value in params}
 
             return dynamic_segments_dict
-        
+
         def _matches_with_dynamic_path(self, path: str) -> bool:
             # Check if the path matches the route
             path_parts = path.split("/")
@@ -133,7 +137,7 @@ class HttpRouter:
                     return False
 
             return True
-        
+
         def _validate_path(self, path: str) -> None:
             # Make sure all '{' and '}' are balanced
             stack = []
@@ -164,7 +168,9 @@ class HttpRouter:
                 dynamic_segments = route.get_dynamic_segments(path)
                 if dynamic_segments:
                     # Add the dynamic segments to the request
-                    def handler_with_dynamic_segments(request: HttpRequest, **kwargs) -> HttpResponse:
+                    def handler_with_dynamic_segments(
+                        request: HttpRequest, **kwargs
+                    ) -> HttpResponse:
                         return route.handler(request, **dynamic_segments)
 
                     return handler_with_dynamic_segments
@@ -205,6 +211,7 @@ class HttpServer:
             self._handle_request(client_socket, addr)
         except Exception as e:
             logerr(f"Error handling request: {e}")
+            traceback.print_exc()
         finally:
             client_socket.close()
             log(f"Closed connection from {addr}")
