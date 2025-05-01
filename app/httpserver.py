@@ -1,6 +1,7 @@
 import socket
 import re
 import traceback
+import gzip
 
 from threading import current_thread
 from typing import Callable, Tuple, Optional
@@ -65,6 +66,20 @@ class HttpResponse:
         STATUS_500_INTERNAL_SERVER_ERROR: "Internal Server Error"
     }
 
+    _PREFERRED_ENCODINGS = ["gzip"]
+
+    _CONTENT_ENCODERS = {
+        "gzip": gzip.compress
+    }
+
+    @staticmethod
+    def _get_preferred_encoding(accepted_encoding_header: str) -> Optional[str]:
+        accepted_encodings = [e.strip() for e in accepted_encoding_header.split(",")]
+
+        for enc in HttpResponse._PREFERRED_ENCODINGS:
+            if enc in accepted_encodings:
+                return enc
+
     def __init__(self, status_code: int, headers: dict = {}, body: bytes = b""):
         self.status_code = status_code
         self.body = body
@@ -75,6 +90,22 @@ class HttpResponse:
         response_line = f"HTTP/1.1 {self.status_code} {status_message}\r\n"
         headers = "".join(f"{k}: {v}\r\n" for k, v in self.headers.items())
         return (response_line + headers + "\r\n").encode("utf-8") + self.body
+
+    def _compress(self, content_encoding: str):
+        if "Content-Encoding" in self.headers:
+            logerr(f"Response already compressed. Ignoring...")
+            return
+
+        if content_encoding not in self._CONTENT_ENCODERS.keys():
+            logv(f"Content-Encoding {content_encoding} not supported. Do not encode the response")
+            return
+
+        # Replace the body with the compressed one
+        compressed_body = self._CONTENT_ENCODERS[content_encoding](self.body)
+        self.headers["Content-Encoding"] = content_encoding
+        self.headers["Content-Length"] = len(compressed_body)
+        self.body = compressed_body
+
 
     def __repr__(self):
         return (
@@ -304,6 +335,15 @@ class HttpServer:
 
             try:
                 response = self.router.get_handler(request.path)(request)
+
+                # See if we need to compress the response based on the request
+                accept_encoding = request.headers.get("Accept-Encoding")
+                if accept_encoding:
+                    response_encoding = HttpResponse._get_preferred_encoding(accept_encoding)
+                    if response_encoding:
+                        logv(f"Encoding the response with {response_encoding} before sending...")
+                        response._compress(response_encoding)
+
             except Exception as e:
                 logerr(f"Error handling request: {e}")
                 response = HttpResponseBuilder(500).build()
