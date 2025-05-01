@@ -12,7 +12,7 @@ def handle_test(request: HttpRequest) -> HttpResponse:
 
 def handle_echo(request: HttpRequest, **kwargs) -> HttpResponse:
     response = HttpResponseBuilder(HttpResponse.STATUS_200_OK)
-    response.set_body(f"{kwargs["echo_val"]}!".encode("utf-8"))
+    response.set_body(f"{kwargs['echo_val']}!".encode("utf-8"))
     return response.build()
 
 def main():
