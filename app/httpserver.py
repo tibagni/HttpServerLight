@@ -7,7 +7,6 @@ from typing import Callable, Tuple, Optional
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-
 def log(text: str) -> None:
     thread_name = current_thread().name
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -35,14 +34,22 @@ class HttpRequest:
 
     def _build_query_map(self, path: str) -> dict:
         if "?" in path:
-            query_string = path.split("?")[1]
-            query_string_parts = query_string.split("&")
-            return {param[0]: param[1] for param in [p.split("=") for p in query_string_parts if "=" in p]}
+            qs = path.split("?")[1]
+            qs_parts = qs.split("&")
+            return {param[0]: param[1] for param in [p.split("=") for p in qs_parts if "=" in p]}
 
         return {}
 
     def __repr__(self):
-        return f"<HttpRequest method={self.method} path={self.path} headers={self.headers} query_params={self.query_params} body={self.body}>"
+        return (
+            f"<HttpRequest"
+            f"  method={self.method}"
+            f"  path={self.path}"
+            f"  headers={self.headers}"
+            f"  query_params={self.query_params}"
+            f"  body={self.body}"
+            f">"
+        )
 
 
 class HttpResponse:
@@ -70,7 +77,13 @@ class HttpResponse:
         return (response_line + headers + "\r\n").encode("utf-8") + self.body
 
     def __repr__(self):
-        return f"<HttpResponse status_code={self.status_code} headers={self.headers} body={self.body}>"
+        return (
+            f"<HttpResponse"
+            f" status_code={self.status_code}"
+            f" headers={self.headers}"
+            f" body={self.body}"
+            f">"
+        )
 
 
 class HttpResponseBuilder:
@@ -79,13 +92,15 @@ class HttpResponseBuilder:
         self._headers = {}
         self._body = b""
 
-    def set_header(self, name: str, value):
+    def set_header(self, name: str, value) -> 'HttpResponseBuilder':
         self._headers[name] = value
+        return self
 
-    def set_body(self, body: bytes, content_type: str = "text/plain"):
+    def set_body(self, body: bytes, content_type: str = "text/plain") -> 'HttpResponseBuilder':
         self.set_header("Content-Type", content_type)
         self.set_header("Content-Length", len(body))
         self._body = body
+        return self
 
     def build(self) -> HttpResponse:
         return HttpResponse(
@@ -163,7 +178,6 @@ class HttpRouter:
                 elif char == "}":
                     if not stack or stack[-1] != "{":
                         raise ValueError(f"Invalid Path: {path}")
-
                     stack.pop()
 
             if stack:
@@ -173,8 +187,9 @@ class HttpRouter:
         self._routes: list[HttpRouter.Route] = []
 
     def add_route(self, path: str, handler: Callable[[HttpRequest], HttpResponse]):
-        # if path in self._routes: TODO Check if the path already exists
-        #     raise ValueError(f"Route {path} already exists")
+        for route in self._routes:
+            if route.matches_with(path):
+                raise ValueError(f"Route {path} already exists")
 
         self._routes.append(HttpRouter.Route(path, handler))
 
@@ -183,10 +198,8 @@ class HttpRouter:
             if route.matches_with(path):
                 dynamic_segments = route.get_dynamic_segments(path)
                 if dynamic_segments:
-                    # Add the dynamic segments to the request
-                    def handler_with_dynamic_segments(
-                        request: HttpRequest, **kwargs
-                    ) -> HttpResponse:
+                    # Pass the dynamic segments to the handler as kwargs
+                    def handler_with_dynamic_segments(request: HttpRequest) -> HttpResponse:
                         return route.handler(request, **dynamic_segments)
 
                     return handler_with_dynamic_segments
@@ -222,11 +235,11 @@ class HttpServer:
                 executor.submit(self._handle_connection, client_socket, addr)
 
     def _handle_connection(self, client_socket: socket.socket, addr: Tuple[str, int]):
-        logv(f"Accepted connection from {addr}")
+        log(f"Accepted connection from {addr}")
         try:
             self._handle_request(client_socket, addr)
         except Exception as e:
-            logerr(f"Error handling request: {e}")
+            logerr(f"{e}")
             traceback.print_exc()
         finally:
             client_socket.close()
