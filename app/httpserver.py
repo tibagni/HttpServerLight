@@ -31,9 +31,18 @@ class HttpRequest:
         self.path = path
         self.headers = headers
         self.body = body
+        self.query_params = self._build_query_map(path)
+
+    def _build_query_map(self, path: str) -> dict:
+        if "?" in path:
+            query_string = path.split("?")[1]
+            query_string_parts = query_string.split("&")
+            return {param[0]: param[1] for param in [p.split("=") for p in query_string_parts if "=" in p]}
+
+        return {}
 
     def __repr__(self):
-        return f"<HttpRequest method={self.method} path={self.path} headers={self.headers} body={self.body}>"
+        return f"<HttpRequest method={self.method} path={self.path} headers={self.headers} query_params={self.query_params} body={self.body}>"
 
 
 class HttpResponse:
@@ -90,6 +99,9 @@ class HttpRouter:
             self.handler = handler
 
         def matches_with(self, path: str) -> bool:
+            # First make sure to not include any query string in our matching
+            path = path.split("?")[0]
+
             # Do not consider the trailing '/' as a difference
             if path.rstrip("/") == self.path.rstrip("/"):
                 return True
