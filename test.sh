@@ -112,6 +112,25 @@ else
     fail "Got $STATUS_CODE and body '$BODY' on query?test=test1&test2=2, expected 200 and '{'test': 'test1', 'test2': '2'}'"
 fi
 
+######################################################## Test - Validate gzip content encoding #####
+((TEST_NUMBER++))
+
+# Perform a GET request with Accept-Encoding: gzip
+RESPONSE=$(curl -s -H "Accept-Encoding: gzip" -w "\n%{http_code}" http://localhost:8080)
+STATUS_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+HEADERS=$(curl -s -I -H "Accept-Encoding: gzip" http://localhost:8080)
+
+# Extract the Content-Encoding header
+CONTENT_ENCODING=$(echo "$HEADERS" | grep -i "Content-Encoding" | awk '{print $2}' | tr -d '\r')
+CONTENT_LENGTH=$(echo "$HEADERS" | grep -i "Content-Length" | awk '{print $2}' | tr -d '\r')
+
+if [ "$STATUS_CODE" -eq 200 ] && [ "$CONTENT_ENCODING" == "gzip" ] && [ "$CONTENT_LENGTH" == "33" ]; then
+    pass "Got 200 OK, gzip encoding, and correct content length"
+else
+    fail "Got $STATUS_CODE, Content-Encoding: $CONTENT_ENCODING, and Content-Length: '$CONTENT_LENGTH', expected 200, gzip, and 33"
+fi
+
 ######################################################## End of tests
 
 # Stop the HTTP server
