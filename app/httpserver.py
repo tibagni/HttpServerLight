@@ -164,7 +164,7 @@ class HttpRouter:
         # TODO fix case when the URL has spaces
         def get_dynamic_segments(self, path: str) -> Optional[dict]:
             dynamic_segments_dict = None
-            pattern = re.sub(r"\{(\w*)\}", r"(\\w+)", self.path)
+            pattern = re.sub(r"\{([\w\.-]*)\}", r"([\\w\\.-]+)", self.path)
             url_match = re.match(pattern, path)
             if url_match:
                 segment_names_pattern = re.sub(r"\{(\w*)\}", r"({\\w*})", self.path)
