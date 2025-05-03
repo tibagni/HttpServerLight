@@ -142,7 +142,6 @@ if [ "$STATUS_CODE" -eq 201 ] && [ -f "files/temp" ]; then
     pass "Got 201 Created and temp file was created"
 else
     fail "Failed to create file. Response code was $STATUS_CODE"
-    
 fi
 
 if [ -f "files/temp" ]; then

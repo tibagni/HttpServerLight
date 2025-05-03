@@ -270,7 +270,9 @@ class HttpServer:
     def _handle_connection(self, client_socket: socket.socket, addr: Tuple[str, int]):
         log(f"Accepted connection from {addr}")
         try:
-            self._handle_request(client_socket, addr)
+            keep_alive = True
+            while keep_alive:
+                keep_alive = self._handle_request(client_socket, addr)
         except Exception as e:
             logerr(f"{e}")
             traceback.print_exc()
@@ -327,8 +329,9 @@ class HttpServer:
 
         return HttpRequest(method, path, headers, body_buff)
 
-    def _handle_request(self, client_socket: socket.socket, addr: Tuple[str, int]):
+    def _handle_request(self, client_socket: socket.socket, addr: Tuple[str, int]) -> bool:
         # Read the request from the client. The request is expected to be in HTTP/1.1 format.
+        logv(f"Waiting data from client {addr}")
         request = self._read_request(client_socket)
 
         if request:
@@ -352,7 +355,10 @@ class HttpServer:
 
             logv(f"Sending response {response} to {addr}")
             client_socket.sendall(response.serialize())
+
+            # See if we need to close the connection
+            connection_header = request.headers.get("Connection", "close")
+            return connection_header.lower() == "keep-alive"
         else:
             log(f"Connection closed by client {addr}")
-
-        client_socket.close()
+            return False
