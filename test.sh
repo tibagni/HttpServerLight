@@ -131,6 +131,24 @@ else
     fail "Got $STATUS_CODE, Content-Encoding: $CONTENT_ENCODING, and Content-Length: '$CONTENT_LENGTH', expected 200, gzip, and 33"
 fi
 
+######################################################## Test - Validate request body #####
+((TEST_NUMBER++))
+
+# Perform a POST request creating some temp
+RESPONSE=$(curl -s --data "12345" -H "Content-Type: application/octet-stream" -w "\n%{http_code}"  http://localhost:8080/files/temp)
+STATUS_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+if [ "$STATUS_CODE" -eq 201 ] && [ -f "files/temp" ]; then
+    pass "Got 201 Created and temp file was created"
+else
+    fail "Failed to create file. Response code was $STATUS_CODE"
+    
+fi
+
+if [ -f "files/temp" ]; then
+    rm files/temp
+fi
+
 ######################################################## End of tests
 
 # Stop the HTTP server

@@ -58,10 +58,22 @@ def handle_files_delete(request: HttpRequest, file_path: str) -> HttpResponse:
         .build()
     )
 
+def handle_files_post(request: HttpRequest, file_path: str) -> HttpResponse:
+    if os.path.exists(file_path):
+        return (
+            HttpResponseBuilder(HttpResponse.STATUS_400_BAD_REQUEST)
+            .set_body("File already exists!".encode("utf-8"))
+            .build()
+        )
+    
+    with open(file_path, "wb") as file:
+        file.write(request.body)
+
+    return HttpResponseBuilder(HttpResponse.STATUS_201_CREATED).build()
+
 
 def handle_files(request: HttpRequest, **kwargs) -> HttpResponse:
     # TODO - handle POST and PUT upload
-    # TODO - handle DELETE
     if "file_name" not in kwargs:
         return (
             HttpResponseBuilder(HttpResponse.STATUS_400_BAD_REQUEST)
@@ -70,9 +82,8 @@ def handle_files(request: HttpRequest, **kwargs) -> HttpResponse:
         )
 
     file_name = kwargs["file_name"]
+    file_path = os.path.join("files", file_name)
     if request.method == "GET" or request.method == "DELETE":
-        file_path = os.path.join("files", file_name)
-
         if not os.path.exists(file_path):
             return (
                 HttpResponseBuilder(HttpResponse.STATUS_404_NOT_FOUND)
@@ -92,6 +103,9 @@ def handle_files(request: HttpRequest, **kwargs) -> HttpResponse:
             if request.method == "GET"
             else handle_files_delete(request, file_path)
         )
+    elif request.method == "POST":
+        return handle_files_post(request, file_path)
+
 
     return (
         HttpResponseBuilder(HttpResponse.STATUS_400_BAD_REQUEST)

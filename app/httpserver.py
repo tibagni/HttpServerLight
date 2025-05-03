@@ -55,12 +55,14 @@ class HttpRequest:
 
 class HttpResponse:
     STATUS_200_OK = 200
+    STATUS_201_CREATED = 201
     STATUS_400_BAD_REQUEST = 400
     STATUS_404_NOT_FOUND = 404
     STATUS_500_INTERNAL_SERVER_ERROR = 500
 
     _STATUS_MESSAGES = {
         STATUS_200_OK: "OK",
+        STATUS_201_CREATED: "Created",
         STATUS_400_BAD_REQUEST: "Bad Request",
         STATUS_404_NOT_FOUND: "Not Found",
         STATUS_500_INTERNAL_SERVER_ERROR: "Internal Server Error"
