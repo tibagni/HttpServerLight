@@ -358,7 +358,11 @@ class HttpServer:
 
             # See if we need to close the connection
             connection_header = request.headers.get("Connection", "close")
-            return connection_header.lower() == "keep-alive"
+            keep_alive = connection_header.lower() == "keep-alive"
+            if keep_alive:
+                log("Keeping connection alive as requested by client")
+
+            return keep_alive
         else:
             log(f"Connection closed by client {addr}")
             return False
